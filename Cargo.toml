@@ -1,0 +1,23 @@
+[package]
+name = "ipfs-test"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name="producer"
+src="src/producer.rs"
+
+[[bin]]
+name="consumer"
+src="src/consumer.rs"
+
+
+[dependencies]
+tokio = { version = "1.18.2", features=["full"]}
+ipfs-embed = { version = "0.22.4", features = ["tokio"]}
+multihash = { version = "0.14.0", default-features = false, features = ["blake3", "sha3"] }
+libipld = { version = "0.12.0", default-features = false, features = ["dag-cbor", "dag-pb"] }
+anyhow = {version = "1.0.57"}
+log = "0.4"
+simple_logger = "2.1.0"
+tokio-stream = "0.1"
