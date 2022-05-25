@@ -22,7 +22,7 @@ impl Data {
     }
 
     pub fn hash(&self, num: u32) -> Multihash {
-        Code::Sha3_256.digest(self.reference(num).as_bytes())
+        Code::Sha3_256.digest(self.data.as_slice())
     }
 
     pub fn cid(&self, num: u32) -> Cid {
@@ -38,14 +38,14 @@ impl Data {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    simple_logger::init_with_level(log::Level::Debug).unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
     let keypair = keypair_from_seed(1);
 
     let sweep_interval = Duration::from_secs(60);
     let path_buf = std::path::PathBuf::from_str("producer").unwrap();
     let storage = StorageConfig::new(None, 10, sweep_interval);
     let mut network = NetworkConfig::new(path_buf, keypair);
-    network.streams = None;
+    // network.streams = None;
     let ipfs = Ipfs::<DefaultParams>::new(ipfs_embed::Config { storage, network }).await?;
 
     let mut stream = ipfs.listen_on("/ip4/127.0.0.1/tcp/2001".parse()?)?;
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
             log::info!("Swarm Event: {:?}", e);
         }
     });
-
+    
     let consumer = keypair_from_seed(2).to_peer_id();
 
     ipfs.bootstrap(&[(consumer, "/ip4/127.0.0.1/tcp/2002".parse().unwrap())])
@@ -77,6 +77,7 @@ async fn main() -> Result<()> {
             let pin = ipfs.create_temp_pin().unwrap();
             ipfs.temp_pin(&pin, &cid).unwrap();
             ipfs.insert(&data.to_ipfs_block(num)).unwrap();
+            ipfs.flush().await.unwrap();
             let peers = ipfs.peers();
             ipfs.sync(&cid, peers);
 
