@@ -59,6 +59,8 @@ async fn main() -> Result<()> {
             };
             let cid = data.cid(num);
             log::info!("inserting {} block, cid={}", num, cid);
+            let pin = ipfs.create_temp_pin().unwrap();
+            ipfs.temp_pin(&pin, &cid).unwrap();
             ipfs.insert(&data.to_ipfs_block(num)).unwrap();
             let peers = ipfs.peers();
             ipfs.sync(&cid, peers);

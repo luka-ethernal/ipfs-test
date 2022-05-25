@@ -62,6 +62,9 @@ async fn main() -> Result<()> {
 
             let block_cid = get_block_cid(num);
             let peers = ipfs.peers();
+            log::info!("peer num={}", peers.len());
+            ipfs.sync(&block_cid, peers.clone());
+
             match ipfs.fetch(&block_cid, peers).await {
                 Ok(data) => {
                     log::info!("Got data: {:?}", data.data());
