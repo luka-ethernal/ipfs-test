@@ -14,7 +14,7 @@ src="src/consumer.rs"
 
 [dependencies]
 tokio = { version = "1.18.2", features=["full"]}
-ipfs-embed = { version = "0.22.4", features = ["tokio"]}
+ipfs-embed = { version = "0.22.4", default-features = false, features = ["tokio"]}
 multihash = { version = "0.14.0", default-features = false, features = ["blake3", "sha3"] }
 libipld = { version = "0.12.0", default-features = false, features = ["dag-cbor", "dag-pb"] }
 anyhow = {version = "1.0.57"}

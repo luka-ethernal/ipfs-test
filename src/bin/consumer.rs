@@ -1,9 +1,11 @@
-
-use std::{str::FromStr, path::Path, time::Duration};
+use std::{path::Path, str::FromStr, time::Duration};
 
 use anyhow::Result;
-use ipfs_embed::{Ipfs, DefaultParams, Config, StorageConfig, Block, multiaddr::multihash::{Multihash, Code}, Cid, ToLibp2p, NetworkConfig};
 use ipfs_embed::multiaddr::multihash::MultihashDigest;
+use ipfs_embed::{
+    multiaddr::multihash::{Code, Multihash},
+    Block, Cid, Config, DefaultParams, Ipfs, NetworkConfig, StorageConfig, ToLibp2p,
+};
 use ipfs_test::util::keypair_from_seed;
 use libipld::IpldCodec;
 use tokio::join;
@@ -38,28 +40,37 @@ fn get_block_cid(num: u32) -> Cid {
 async fn main() -> Result<()> {
     simple_logger::init_with_level(log::Level::Debug).unwrap();
     let keypair = keypair_from_seed(2);
-    
+
     let sweep_interval = Duration::from_secs(60);
-	let path_buf = std::path::PathBuf::from_str("consumer").unwrap();
-	let storage = StorageConfig::new(None, 10, sweep_interval);
-	let mut network = NetworkConfig::new(path_buf, keypair);
-	network.mdns = None;
-	let ipfs = Ipfs::<DefaultParams>::new(ipfs_embed::Config { storage, network }).await?;
+    let path_buf = std::path::PathBuf::from_str("consumer").unwrap();
+    let storage = StorageConfig::new(None, 10, sweep_interval);
+    let mut network = NetworkConfig::new(path_buf, keypair);
+    network.streams = None;
+    let ipfs = Ipfs::<DefaultParams>::new(ipfs_embed::Config { storage, network }).await?;
 
     let mut stream = ipfs.listen_on("/ip4/127.0.0.1/tcp/2002".parse()?)?;
     let events = tokio::spawn(async move {
-            while let Some(e) = stream.next().await {
+        while let Some(e) = stream.next().await {
             log::info!("Event: {:?}", e);
         }
     });
+
+    let mut swarm_stream = ipfs.swarm_events();
+    let swarm_events = tokio::spawn(async move {
+        while let Some(e) = swarm_stream.next().await {
+            log::info!("Swarm Event: {:?}", e);
+        }
+    });
+
     let producer = keypair_from_seed(1).to_peer_id();
-   
-    ipfs.bootstrap(&[(producer,"/ip4/127.0.0.1/tcp/2001".parse().unwrap())]).await.unwrap();
+
+    ipfs.bootstrap(&[(producer, "/ip4/127.0.0.1/tcp/2001".parse().unwrap())])
+        .await
+        .unwrap();
 
     let consume = tokio::spawn(async move {
         let mut num = 1u32;
         loop {
-
             let block_cid = get_block_cid(num);
             let peers = ipfs.peers();
             log::info!("peer num={}", peers.len());
@@ -68,17 +79,17 @@ async fn main() -> Result<()> {
             match ipfs.fetch(&block_cid, peers).await {
                 Ok(data) => {
                     log::info!("Got data: {:?}", data.data());
-                    num+=1;
+                    num += 1;
                 }
                 Err(e) => {
                     log::warn!("No data, error: {:?}", e);
-                },
+                }
             }
             tokio::time::sleep(Duration::from_secs(5)).await;
         }
     });
-   
-    join!(events, consume);
+
+    join!(swarm_events, events, consume);
 
     Ok(())
 }
