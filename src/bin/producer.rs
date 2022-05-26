@@ -17,23 +17,18 @@ struct Data {
 }
 
 impl Data {
-    /// Cell refrence in format `block_number:column_number:row_number`
-    pub fn reference(&self, num: u32) -> String {
-        format!("ref_num:{}", num)
-    }
-
-    pub fn hash(&self, num: u32) -> Multihash {
+    pub fn hash(&self) -> Multihash {
         Code::Sha3_256.digest(self.data.as_slice())
     }
 
-    pub fn cid(&self, num: u32) -> Cid {
-        Cid::new_v1(IpldCodec::Raw.into(), self.hash(num))
+    pub fn cid(&self) -> Cid {
+        Cid::new_v1(IpldCodec::Raw.into(), self.hash())
     }
 
     // Block data isn't encoded
     // TODO: optimization - multiple cells inside a single block (per appID)
     pub fn to_ipfs_block(self, num: u32) -> Block<DefaultParams> {
-        Block::<DefaultParams>::new_unchecked(self.cid(num), self.data)
+        Block::<DefaultParams>::new(self.cid(), self.data).unwrap()
     }
 }
 

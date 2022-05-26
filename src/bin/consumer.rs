@@ -71,12 +71,6 @@ async fn main() -> Result<()> {
 
     let consume = tokio::spawn(async move {
         let mut num = 1u32;
-        // let cids = ["bafkrmibaoo2kkmncepcs2tsomgjkrhznmpv6vjzzxdidoeslflnc4sw2re",
-        //                     "bafkrmif7obysgq3pwq5uhettwbkvnjwl6eltoaov3wxu3mcgmvna5t6d4a",
-        //                     "bafkrmicmx4wkohcpjhhk3ao3al7uavysg3bv3vdvl5ppofmwqgyor2arue",
-        //                     "bafkrmicww2jya5rvawucks6aqg3o3swsspnc22jqcxbksn7dbr7cwfoub4",
-        //                     "bafkrmie2nv4j5i3gw4elg5tkgaoi3hvyrmsaosrumsahkey3epz3zi5vve",
-        //                     "bafkrmiczcw5boblh2ndal5b4u5j2voaehspiao6dvavytajacoa2tzvhwi"].into_iter().map(|e| e.parse().unwrap()).collect::<Vec<Cid>>();
         loop {
             let key = Key::from(format!("ref_num:{}", num).as_bytes().to_vec());
 
