@@ -6,6 +6,7 @@ use ipfs_embed::{
     multiaddr::multihash::{Code, Multihash},
     Block, Cid, Config, DefaultParams, Ipfs, NetworkConfig, StorageConfig, ToLibp2p,
 };
+use ipfs_embed::{Key, Record};
 use ipfs_test::util::keypair_from_seed;
 use libipld::IpldCodec;
 use tokio::join;
@@ -80,6 +81,17 @@ async fn main() -> Result<()> {
             ipfs.flush().await.unwrap();
             let peers = ipfs.peers();
             ipfs.sync(&cid, peers);
+            while let Err(e) = ipfs.put_record(
+                Record::new(
+                    format!("ref_num:{}", num).as_bytes().to_vec(),
+                    cid.to_string().as_bytes().to_vec(),
+                ),
+                ipfs_embed::Quorum::One,
+            )
+            .await {
+                log::warn!("No quorum, retrying again... error: {}", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
 
             tokio::time::sleep(Duration::from_secs(5)).await;
 

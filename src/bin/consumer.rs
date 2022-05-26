@@ -6,6 +6,7 @@ use ipfs_embed::{
     multiaddr::multihash::{Code, Multihash},
     Block, Cid, Config, DefaultParams, Ipfs, NetworkConfig, StorageConfig, ToLibp2p,
 };
+use ipfs_embed::{Key, Record};
 use ipfs_test::util::keypair_from_seed;
 use libipld::IpldCodec;
 use tokio::join;
@@ -70,28 +71,36 @@ async fn main() -> Result<()> {
 
     let consume = tokio::spawn(async move {
         let mut num = 1u32;
-        let cids = ["bafkrmibaoo2kkmncepcs2tsomgjkrhznmpv6vjzzxdidoeslflnc4sw2re",
-                            "bafkrmif7obysgq3pwq5uhettwbkvnjwl6eltoaov3wxu3mcgmvna5t6d4a",
-                            "bafkrmicmx4wkohcpjhhk3ao3al7uavysg3bv3vdvl5ppofmwqgyor2arue",
-                            "bafkrmicww2jya5rvawucks6aqg3o3swsspnc22jqcxbksn7dbr7cwfoub4",
-                            "bafkrmie2nv4j5i3gw4elg5tkgaoi3hvyrmsaosrumsahkey3epz3zi5vve",
-                            "bafkrmiczcw5boblh2ndal5b4u5j2voaehspiao6dvavytajacoa2tzvhwi"].into_iter().map(|e| e.parse().unwrap()).collect::<Vec<Cid>>();
+        // let cids = ["bafkrmibaoo2kkmncepcs2tsomgjkrhznmpv6vjzzxdidoeslflnc4sw2re",
+        //                     "bafkrmif7obysgq3pwq5uhettwbkvnjwl6eltoaov3wxu3mcgmvna5t6d4a",
+        //                     "bafkrmicmx4wkohcpjhhk3ao3al7uavysg3bv3vdvl5ppofmwqgyor2arue",
+        //                     "bafkrmicww2jya5rvawucks6aqg3o3swsspnc22jqcxbksn7dbr7cwfoub4",
+        //                     "bafkrmie2nv4j5i3gw4elg5tkgaoi3hvyrmsaosrumsahkey3epz3zi5vve",
+        //                     "bafkrmiczcw5boblh2ndal5b4u5j2voaehspiao6dvavytajacoa2tzvhwi"].into_iter().map(|e| e.parse().unwrap()).collect::<Vec<Cid>>();
         loop {
-            let block_cid = cids[(num-1) as usize];
-            let peers = ipfs.peers();
-            log::info!("peer num={}", peers.len());
-            ipfs.sync(&block_cid, peers.clone());
+            let key = Key::from(format!("ref_num:{}", num).as_bytes().to_vec());
 
-            match ipfs.fetch(&block_cid, peers).await {
-                Ok(data) => {
-                    log::info!("Got data: {:?}", data.data());
-                    num += 1;
+            if let Ok(rec) = ipfs.get_record(&key, ipfs_embed::Quorum::One).await {
+                let block_cid = String::from_utf8_lossy(rec[0].record.value.as_slice())
+                    .parse()
+                    .unwrap();
+                let peers = ipfs.peers();
+                log::info!("peer num={}", peers.len());
+                ipfs.sync(&block_cid, peers.clone());
+
+                match ipfs.fetch(&block_cid, peers).await {
+                    Ok(data) => {
+                        log::info!("Got data: {:?}", data.data());
+                        num += 1;
+                    }
+                    Err(e) => {
+                        log::warn!("No data, error: {:?}", e);
+                    }
                 }
-                Err(e) => {
-                    log::warn!("No data, error: {:?}", e);
-                }
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            } else {
+                log::warn!("No record, error");
             }
-            tokio::time::sleep(Duration::from_secs(5)).await;
         }
     });
 
