@@ -1,12 +1,12 @@
-use std::{path::Path, str::FromStr, time::Duration};
+use std::{str::FromStr, time::Duration};
 
 use anyhow::Result;
 use ipfs_embed::multiaddr::multihash::MultihashDigest;
+use ipfs_embed::Record;
 use ipfs_embed::{
     multiaddr::multihash::{Code, Multihash},
-    Block, Cid, Config, DefaultParams, Ipfs, NetworkConfig, StorageConfig, ToLibp2p,
+    Block, Cid, DefaultParams, Ipfs, NetworkConfig, StorageConfig, ToLibp2p,
 };
-use ipfs_embed::{Key, Record};
 use ipfs_test::util::keypair_from_seed;
 use libipld::IpldCodec;
 use tokio::join;
@@ -40,8 +40,7 @@ async fn main() -> Result<()> {
     let sweep_interval = Duration::from_secs(60);
     let path_buf = std::path::PathBuf::from_str("producer").unwrap();
     let storage = StorageConfig::new(None, 10, sweep_interval);
-    let mut network = NetworkConfig::new(path_buf, keypair);
-    // network.streams = None;
+    let network = NetworkConfig::new(path_buf, keypair);
     let ipfs = Ipfs::<DefaultParams>::new(ipfs_embed::Config { storage, network }).await?;
 
     let mut stream = ipfs.listen_on("/ip4/127.0.0.1/tcp/2001".parse()?)?;
@@ -57,7 +56,7 @@ async fn main() -> Result<()> {
             log::info!("Swarm Event: {:?}", e);
         }
     });
-    
+
     let consumer = keypair_from_seed(2).to_peer_id();
 
     ipfs.bootstrap(&[(consumer, "/ip4/127.0.0.1/tcp/2002".parse().unwrap())])
@@ -73,14 +72,16 @@ async fn main() -> Result<()> {
             let pin = ipfs.create_temp_pin().unwrap();
             ipfs.temp_pin(&pin, &cid).unwrap();
             ipfs.insert(&data.to_ipfs_block(num)).unwrap();
-            while let Err(e) = ipfs.put_record(
-                Record::new(
-                    format!("ref_num:{}", num).as_bytes().to_vec(),
-                    cid.to_string().as_bytes().to_vec(),
-                ),
-                ipfs_embed::Quorum::One,
-            )
-            .await {
+            while let Err(e) = ipfs
+                .put_record(
+                    Record::new(
+                        format!("ref_num:{}", num).as_bytes().to_vec(),
+                        cid.to_string().as_bytes().to_vec(),
+                    ),
+                    ipfs_embed::Quorum::One,
+                )
+                .await
+            {
                 log::warn!("No quorum, retrying again... error: {}", e);
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
@@ -94,7 +95,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    join!(swarm_events, events, produce);
+    let _ = join!(swarm_events, events, produce);
 
     Ok(())
 }
