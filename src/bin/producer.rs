@@ -68,14 +68,11 @@ async fn main() -> Result<()> {
         for num in 1..10000u32 {
             let raw = format!("example data {}", num).as_bytes().to_vec();
             let data = Data { data: raw.clone() };
-            let cid = data.cid(num);
+            let cid = data.cid();
             log::info!("inserting {} block, cid={}", num, cid);
             let pin = ipfs.create_temp_pin().unwrap();
             ipfs.temp_pin(&pin, &cid).unwrap();
             ipfs.insert(&data.to_ipfs_block(num)).unwrap();
-            ipfs.flush().await.unwrap();
-            let peers = ipfs.peers();
-            ipfs.sync(&cid, peers);
             while let Err(e) = ipfs.put_record(
                 Record::new(
                     format!("ref_num:{}", num).as_bytes().to_vec(),

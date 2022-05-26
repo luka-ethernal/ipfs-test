@@ -39,7 +39,7 @@ fn get_block_cid(num: u32) -> Cid {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    simple_logger::init_with_level(log::Level::Debug).unwrap();
+    simple_logger::init_with_level(log::Level::Info).unwrap();
     let keypair = keypair_from_seed(2);
 
     let sweep_interval = Duration::from_secs(60);
@@ -80,11 +80,11 @@ async fn main() -> Result<()> {
                     .unwrap();
                 let peers = ipfs.peers();
                 log::info!("peer num={}", peers.len());
-                ipfs.sync(&block_cid, peers.clone());
+                // ipfs.sync(&block_cid, peers.clone());
 
                 match ipfs.fetch(&block_cid, peers).await {
                     Ok(data) => {
-                        log::info!("Got data: {:?}", data.data());
+                        log::info!("Got data: {:?}", String::from_utf8_lossy(data.data()));
                         num += 1;
                     }
                     Err(e) => {
