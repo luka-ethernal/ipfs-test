@@ -51,17 +51,25 @@ async fn main() -> Result<()> {
     });
 
     let mut swarm_stream = ipfs.swarm_events();
+
+    // We will bootstrap to the first consumer that appears.
+    let first_peer = loop {
+        match swarm_stream.next().await.unwrap() {
+            ipfs_embed::Event::Discovered(p) => {
+                break p;
+            },
+            _ => ()
+        }
+    };
+    ipfs.bootstrap(&[(first_peer, "/ip4/127.0.0.1/tcp/0".parse().unwrap())])
+    .await
+    .unwrap();
+
     let swarm_events = tokio::spawn(async move {
         while let Some(e) = swarm_stream.next().await {
             log::info!("Swarm Event: {:?}", e);
         }
     });
-
-    let consumer = keypair_from_seed(2).to_peer_id();
-
-    ipfs.bootstrap(&[(consumer, "/ip4/127.0.0.1/tcp/2002".parse().unwrap())])
-        .await
-        .unwrap();
 
     let produce = tokio::spawn(async move {
         for num in 1..10000u32 {

@@ -11,12 +11,13 @@ use tokio_stream::StreamExt;
 #[tokio::main]
 async fn main() -> Result<()> {
     simple_logger::init_with_level(log::Level::Info).unwrap();
-    let keypair = keypair_from_seed(2);
+    
 
     let sweep_interval = Duration::from_secs(60);
     let now = SystemTime::duration_since(&SystemTime::now(), SystemTime::UNIX_EPOCH)
         .unwrap()
         .as_secs();
+    let keypair = keypair_from_seed(now);
     let path_buf = std::path::PathBuf::from_str(format!("consumer_{:?}", now).as_str()).unwrap();
     let storage = StorageConfig::new(None, 10, sweep_interval);
     let network = NetworkConfig::new(path_buf, keypair);
@@ -57,10 +58,13 @@ async fn main() -> Result<()> {
                 match ipfs.fetch(&block_cid, peers).await {
                     Ok(data) => {
                         log::info!("Got data: {:?}", String::from_utf8_lossy(data.data()));
+                        let pin = ipfs.create_temp_pin().unwrap();
+                        ipfs.temp_pin(&pin, &block_cid).unwrap();
                         num += 1;
                     }
                     Err(e) => {
                         log::warn!("No data, error: {:?}", e);
+                        tokio::time::sleep(Duration::from_secs(5)).await;
                     }
                 }
             } else {
